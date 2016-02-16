@@ -1,0 +1,133 @@
+<!DOCTYPE=html>
+<head>
+    <meta charset='utf-8'>
+    <title>Historcial Income Distribution in The U.S.</title>
+
+    <script src="//d3js.org/d3.v3.min.js"></script>
+
+    <style>
+        body {
+            font: 10px sans-serif;
+        }
+
+        .axis line,
+        .axis path {
+            fill: none;
+            stroke: #000;
+            shape-rendering: crispEdges;
+        }
+
+        .line {
+            fill: none;
+            stroke-width: 2px;
+        }
+
+        .title {
+            font-size: 16px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+<script>
+var margin = {left:50, top:25, right:75, bottom:25},
+    width = 960 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
+
+var timeFormat = d3.time.format("%Y").parse;
+
+var line = d3.svg.line()
+    .x(function(d) { return x(d.Year); })
+    .y(function(d) { return y(d.Dollars); })
+    .interpolate("linear");
+
+var x = d3.time.scale().range([0, width]),
+    y = d3.scale.linear().range([height, 0]),
+    color = d3.scale.ordinal().range(['#a1d99b','#74c476','#41ab5d','#238b45','#005a32']);
+
+var xAxis = d3.svg.axis().orient("bottom").scale(x),
+    yAxis = d3.svg.axis().orient("left").tickFormat(function(d) { return "$" + d; }).scale(y);
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+d3.csv("data/Income Distribution (2014 Adjusted Dollars).csv", function(data) {
+
+    data.forEach(function(d) {
+        d.Year = timeFormat(d.Year);
+
+        d["Number (thousands)"] = +d["Number (thousands)"];
+
+        d["Lowest Quintile"] = +d["Lowest Quintile"];
+        d["Second Quintile"] = +d["Second Quintile"];
+        d["Third Quintile"] = +d["Third Quintile"];
+        d["Fourth Quintile"] = +d["Fourth Quintile"];
+        d["Top 5 Percent"] = +d["Top 5 Percent"];
+    });
+
+    color.domain(d3.keys(data[0]).filter(function(key) { return (key !== "Year") && (key !== "Number (thousands)"); }));
+    x.domain(d3.extent(data, function(d) { return d.Year; }));
+    y.domain([0, d3.max(data, function(d) { return d["Top 5 Percent"]; })]);
+
+    var quintiles = color.domain().map(function(name) {
+      return {
+        name: name,
+        values: data.map(function(d) {
+          return {Year: d.Year, Dollars: +d[name]};
+        })
+      };
+    });
+
+    var quintile = svg.selectAll(".quintile")
+        .data(quintiles)
+        .enter()
+        .append("g")
+        .attr("class", "quintile");
+
+    quintile.append("path")
+        .attr("class", "line")
+        .attr("d", function(d) { return line(d.values); })
+        .style("stroke", function(d) { return color(d.name); });
+
+    quintile.append("text")
+        .datum(function(d) { return {name: d.name, value: d.values[0]}; })
+        .attr("transform", function(d) { console.log(d);return "translate(" + x(d.value.Year) + "," + y(d.value.Dollars) + ")"; })
+        .attr("x", 3)
+        .attr("dy", ".35em")
+        .text(function(d) { return d.name; });
+
+    svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis)
+        .append("text")
+            .attr("x", -12)
+            .attr("y", 25)
+            .style("text-anchor", "start")
+            .text("Year");
+    svg.append("g")
+        .attr("class", "y axis")
+        .call(yAxis)
+        .append("text")
+          .attr("transform", "rotate(-90)")
+          .attr("y", 6)
+          .attr("dy", ".71em")
+          .style("text-anchor", "end")
+          .text("Dollars");
+
+    svg.append("text")
+        .attr("x", width /2)
+        .attr("y", -(margin.top / 2))
+        .attr("class", "title")
+        .style("text-anchor", "middle")
+        .text("Historical Income Distribution (2014 Adjusted Dollars)");
+});
+
+
+
+</script>
+</body>
